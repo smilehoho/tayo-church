@@ -3,7 +3,8 @@
 > 팔찌에 붙은 **QR을 폰으로 찍기만** 하면 출석이 기록되는, **설치가 필요 없는** 웹앱입니다.
 > **인터넷이 끊겨도** 동작하고, 연결되면 **구글 시트**에 자동으로 모입니다.
 
-**▶ 바로 열어보기: https://smilehoho.github.io/tayo-church/**
+**▶ 출석앱 바로 열어보기: https://smilehoho.github.io/tayo-church/**
+**📊 도입 제안서(발표용): https://smilehoho.github.io/tayo-church/proposal.html**
 
 ---
 
