@@ -1,0 +1,18 @@
+{
+  "name": "따요 처치 출석 체크",
+  "short_name": "따요출석",
+  "description": "QR 스캔으로 성도 출석을 체크합니다. 인터넷이 끊겨도 동작합니다.",
+  "lang": "ko",
+  "dir": "ltr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FCF6EA",
+  "theme_color": "#16294B",
+  "icons": [
+    { "src": "./icon.svg", "sizes": "192x192", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "./icon.svg", "sizes": "512x512", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}

@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#16294B">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>따요 처치 출석 체크</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="./icon.svg">
+<style>
+  :root{
+    --bg:#FCF6EA; --ink:#16294B; --accent:#E4952B;
+    --ink-72:rgba(22,41,75,.72); --ink-40:rgba(22,41,75,.40);
+    --ink-12:rgba(22,41,75,.12); --ink-06:rgba(22,41,75,.06);
+    --ok:#16294B;
+  }
+  *{box-sizing:border-box;margin:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{
+    background:var(--bg);color:var(--ink);
+    font-family:system-ui,-apple-system,"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif;
+    -webkit-font-smoothing:antialiased;
+    padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+  .top{
+    display:flex;align-items:center;justify-content:space-between;gap:12px;
+    padding:16px 18px;position:sticky;top:0;background:var(--bg);z-index:5;
+  }
+  .brand{font-weight:800;font-size:20px;letter-spacing:-.02em}
+  .brand span{color:var(--ink-72);font-weight:700}
+  .pill{font-weight:800;font-size:13px;padding:6px 12px;border-radius:20px;border:2px solid var(--ink)}
+  .pill.on{background:var(--ink);color:var(--bg)}
+  .pill.off{background:var(--accent);color:var(--ink);border-color:var(--accent)}
+  main{max-width:520px;margin:0 auto;padding:0 16px 40px;display:flex;flex-direction:column;gap:16px}
+  .card{background:#fff0;border:2px solid var(--ink-12);border-radius:20px;padding:18px}
+  .card.scan{border-color:var(--ink);padding:14px}
+  #reader{width:100%;border-radius:14px;overflow:hidden;background:var(--ink-06);min-height:240px}
+  #reader video{width:100%!important;display:block;border-radius:14px}
+  .hint{text-align:center;color:var(--ink-72);font-weight:600;font-size:15px;padding:26px 8px}
+  .btn{
+    display:block;width:100%;border:2px solid var(--ink);border-radius:14px;
+    font-family:inherit;font-weight:800;font-size:19px;padding:15px;cursor:pointer;
+    background:var(--accent);color:var(--ink);
+  }
+  .btn.on{background:var(--ink);color:var(--bg)}
+  .btn.ghost{background:transparent;color:var(--ink)}
+  .btn.small{width:auto;font-size:16px;padding:12px 18px;flex:none}
+  .btn.tiny{width:auto;font-size:13px;padding:8px 12px;border-width:2px;border-color:var(--ink-40);color:var(--ink-72);margin-top:12px}
+  .btn:active{transform:translateY(1px)}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+  .stat{border:2px solid var(--ink-12);border-radius:14px;padding:14px;text-align:center}
+  .stat .num{font-size:40px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+  .stat .lbl{margin-top:6px;font-size:14px;font-weight:700;color:var(--ink-72)}
+  .muted{margin-top:12px;font-size:14px;font-weight:700;color:var(--ink-72);text-align:center}
+  .muted.ok{color:var(--ink)}
+  .muted.warn{color:var(--accent)}
+  .muted.bad{color:var(--accent)}
+  .mtitle{font-weight:800;font-size:16px;margin-bottom:12px}
+  .manual{display:flex;gap:10px}
+  .manual input{
+    flex:1;min-width:0;border:2px solid var(--ink);border-radius:14px;
+    font-family:inherit;font-size:20px;font-weight:700;padding:14px;background:var(--bg);color:var(--ink);
+  }
+  .manual input::placeholder{color:var(--ink-40)}
+  .recent{list-style:none;display:flex;flex-direction:column;gap:8px}
+  .recent li{display:flex;justify-content:space-between;align-items:center;
+    padding:12px 14px;border-radius:12px;background:var(--ink-06);font-weight:700}
+  .recent .rc{font-size:19px;font-variant-numeric:tabular-nums}
+  .recent .rt{font-size:14px;color:var(--ink-72);font-variant-numeric:tabular-nums}
+  .recent .empty{justify-content:center;color:var(--ink-40);background:transparent}
+  .toast{
+    position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);
+    background:var(--ink);color:var(--bg);font-weight:800;font-size:18px;
+    padding:14px 24px;border-radius:16px;z-index:20;box-shadow:0 8px 24px var(--ink-12);
+    max-width:90vw;text-align:center
+  }
+  .toast.ok{background:var(--ink)}
+  .toast.dup{background:var(--accent);color:var(--ink)}
+  .toast.bad{background:var(--accent);color:var(--ink)}
+  .foot{text-align:center;color:var(--ink-40);font-size:12px;font-weight:700;padding:8px 0 20px}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand">따요 처치 <span>출석</span></div>
+  <div id="net" class="pill">연결됨</div>
+</header>
+
+<main>
+  <section class="card scan">
+    <div id="reader"></div>
+    <div id="scanhint" class="hint">아래 버튼을 눌러<br>카메라로 팔찌 QR을 찍으세요</div>
+    <button id="toggle" class="btn">스캔 시작</button>
+  </section>
+
+  <section class="card">
+    <div class="row2">
+      <div class="stat"><div class="num" id="cntToday">0</div><div class="lbl">오늘 출석</div></div>
+      <div class="stat"><div class="num" id="cntPending">0</div><div class="lbl">미동기화</div></div>
+    </div>
+    <button id="sync" class="btn ghost">서버로 동기화</button>
+    <div id="serverState" class="muted warn">서버 미설정 — 폰에만 저장 중</div>
+  </section>
+
+  <section class="card">
+    <div class="mtitle">팔찌가 없나요? 번호로 체크</div>
+    <form id="manualForm" class="manual" autocomplete="off">
+      <input id="manualInput" inputmode="numeric" pattern="[0-9]*" placeholder="성도 번호 (예: 0142)">
+      <button class="btn small" type="submit">확인</button>
+    </form>
+  </section>
+
+  <section class="card">
+    <div class="mtitle">최근 스캔</div>
+    <ul id="recent" class="recent"><li class="empty">아직 없음</li></ul>
+    <button id="clearDay" class="btn tiny">오늘 기록 비우기</button>
+  </section>
+</main>
+
+<footer class="foot"><span id="dev"></span> · PoC v1</footer>
+
+<div id="toast" class="toast" hidden></div>
+
+<script src="./vendor/html5-qrcode.min.js"></script>
+<script src="./config.js"></script>
+<script src="./app.js"></script>
+</body>
+</html>
