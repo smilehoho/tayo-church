@@ -1,0 +1,483 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>따요 처치 QR 출석 제안 (세로형)</title>
+<style>
+  /* ===== 색은 딱 3개 + 각 색의 투명도 변형만 ===== */
+  :root{
+    --bg:#FCF6EA;      /* 밝은 아이보리 */
+    --ink:#16294B;     /* 깊은 네이비 */
+    --accent:#E4952B;  /* 앰버 골드 */
+    --ink-72:rgba(22,41,75,.72);
+    --ink-30:rgba(22,41,75,.30);
+    --ink-12:rgba(22,41,75,.12);
+    --ink-07:rgba(22,41,75,.07);
+    --accent-18:rgba(228,149,43,.18);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{
+    background:var(--ink);
+    color:var(--ink);
+    font-family:system-ui,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR","Segoe UI",sans-serif;
+    -webkit-font-smoothing:antialiased;
+    overflow:hidden;
+  }
+  h1,h2,p,span,div,li{word-break:keep-all}
+
+  /* ===== 세로 스크롤-스냅 무대 (폰 폭 프레임) ===== */
+  .deck{
+    width:min(100vw,30rem);
+    height:100vh; height:100svh;
+    margin:0 auto;
+    background:var(--bg);
+    overflow-y:scroll;
+    scroll-snap-type:y mandatory;
+    -webkit-overflow-scrolling:touch;
+    scrollbar-width:none;
+  }
+  .deck::-webkit-scrollbar{display:none}
+  .slide{
+    width:100%;
+    height:100vh; height:100svh;
+    scroll-snap-align:start;
+    scroll-snap-stop:always;
+    container-type:size;      /* 자식 cqw/cqh 기준 */
+    overflow:hidden;
+    position:relative;
+    background:var(--bg);
+  }
+  /* .stage 는 .slide 자손이라 cqw/cqh 가 슬라이드 기준으로 정확히 계산됨 */
+  .stage{height:100%;display:flex;flex-direction:column;justify-content:center;gap:2.6cqh;padding:8cqh 8cqw}
+  .stage.center{text-align:center;align-items:center}
+
+  /* ===== 공통 타이포 ===== */
+  .eyebrow{
+    align-self:flex-start;display:inline-flex;align-items:center;
+    background:var(--accent);color:var(--ink);
+    font-weight:800;font-size:3.8cqw;letter-spacing:.02em;
+    padding:1cqw 3cqw;border-radius:20cqw;
+  }
+  .stage.center .eyebrow{align-self:center}
+  .headline{font-size:9cqw;font-weight:800;line-height:1.1;letter-spacing:-.02em;text-wrap:balance}
+  .subhead{font-size:4.9cqw;font-weight:600;color:var(--ink-72);line-height:1.38}
+  .note{font-size:4cqw;font-weight:700;color:var(--ink-72)}
+  .note::before{content:"↻ ";color:var(--accent);font-weight:900}
+  .hl{background:var(--accent);color:var(--ink);padding:0 .28em;border-radius:.12em}
+
+  /* ===== 1. 표지 ===== */
+  .hero{font-size:13cqw;font-weight:800;line-height:1.08;letter-spacing:-.03em;margin:1cqh 0 2cqh}
+  .title-qr{width:42cqw;margin-top:3cqh}
+
+  /* ===== 큰 문장 ===== */
+  .stage.center .headline{font-size:11cqw}
+  .big-qr{width:46cqw;margin-bottom:1cqh}
+
+  /* ===== 리스트 ===== */
+  .biglist{display:flex;flex-direction:column;gap:3.2cqh;margin-top:1cqh}
+  .biglist .row{display:flex;align-items:center;gap:4cqw;font-size:6.4cqw;font-weight:700}
+  .mk{width:6cqw;height:6cqw;flex:none;border-radius:1.4cqw;display:grid;place-items:center}
+  .mk.dot{background:var(--ink-12)}
+  .mk.dot::after{content:"";width:2.4cqw;height:2.4cqw;border-radius:50%;background:var(--ink)}
+  .mk.tick{background:var(--accent);color:var(--ink);font-size:4.4cqw;font-weight:900}
+
+  /* ===== 4. 등장인물 (2x2) ===== */
+  .roles{display:grid;grid-template-columns:repeat(2,1fr);gap:5cqh 5cqw;margin-top:2cqh}
+  .role{display:flex;flex-direction:column;align-items:center;text-align:center;gap:2cqw}
+  .role .av{width:20cqw;height:20cqw;border-radius:50%;background:var(--ink);color:var(--bg);display:grid;place-items:center;font-size:9cqw;font-weight:800;line-height:1}
+  .role .rn{font-weight:800;font-size:5.6cqw}
+  .role .rd{font-size:4cqw;color:var(--ink-72);font-weight:600}
+
+  /* ===== 5~8. 여정 ===== */
+  .art{flex:1;min-height:0;display:grid;place-items:center;width:100%}
+
+  /* QR (CSS 도형) */
+  .qr{display:grid;grid-template-columns:repeat(var(--n,15),1fr);width:100%;aspect-ratio:1;background:var(--bg);border:.7cqw solid var(--ink);border-radius:2.5cqw;padding:6%}
+  .qr i{background:transparent}
+  .qr i.on{background:var(--ink)}
+
+  /* 이름표/번호 카드 */
+  .idcard{width:78cqw;background:var(--bg);border:.9cqw solid var(--ink);border-radius:4.5cqw;overflow:hidden;box-shadow:0 2cqw 5cqw var(--ink-12)}
+  .idcard .cap{background:var(--accent);color:var(--ink);font-weight:800;font-size:4.2cqw;padding:2.6cqw 4cqw}
+  .idcard .bd{display:flex;align-items:center;gap:5cqw;padding:4.5cqw}
+  .idcard .qr{width:22cqw}
+  .idcard .lbl{font-size:3.8cqw;font-weight:700;color:var(--ink-72)}
+  .idcard .num{font-size:11cqw;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+
+  /* 팔찌 */
+  .band{position:relative;width:74cqw;height:47cqw;display:grid;place-items:center}
+  .band .strap{position:absolute;inset:0;border:3cqw solid var(--ink);border-radius:50%}
+  .band .tag{position:relative;width:29cqw;height:29cqw;background:var(--bg);border:1cqw solid var(--ink);border-radius:5cqw;display:grid;place-items:center;padding:3cqw;box-shadow:0 0 0 3cqw var(--bg)}
+  .band .tag .qr{width:100%;border:none;padding:0}
+
+  /* 스마트폰 스캔 */
+  .phone{position:relative;height:min(70cqw,58cqh);aspect-ratio:1/1.8;width:auto;border:1.6cqw solid var(--ink);border-radius:7cqw;background:var(--bg);padding:4.5cqw 4cqw;display:flex;flex-direction:column}
+  .phone::before{content:"";position:absolute;top:3cqw;left:50%;transform:translateX(-50%);width:14cqw;height:1.6cqw;background:var(--ink);border-radius:2cqw}
+  .phone .vf{position:relative;flex:1;margin-top:3cqw;display:grid;place-items:center}
+  .phone .vf .qr{width:82%}
+  .phone .bk{position:absolute;width:9cqw;height:9cqw;border:1.4cqw solid var(--accent)}
+  .phone .bk.tl{top:2%;left:4%;border-right:0;border-bottom:0}
+  .phone .bk.tr{top:2%;right:4%;border-left:0;border-bottom:0}
+  .phone .bk.bl{bottom:2%;left:4%;border-right:0;border-top:0}
+  .phone .bk.br{bottom:2%;right:4%;border-left:0;border-top:0}
+  .phone .scan{position:absolute;left:8%;right:8%;height:1.1cqw;background:var(--accent);border-radius:2cqw;box-shadow:0 0 4cqw var(--accent)}
+  @media (prefers-reduced-motion:no-preference){.phone .scan{animation:scan 2.2s ease-in-out infinite}}
+  @keyframes scan{0%,100%{top:22%}50%{top:74%}}
+
+  /* 대시보드(도넛+막대) */
+  .dash{display:flex;flex-direction:column;align-items:center;gap:5cqh}
+  .donut{position:relative;width:44cqw;aspect-ratio:1;border-radius:50%;background:conic-gradient(var(--accent) 0 78%,var(--ink-12) 78% 100%);display:grid;place-items:center}
+  .donut::before{content:"";position:absolute;inset:24%;background:var(--bg);border-radius:50%}
+  .donut .pct{position:relative;font-size:11cqw;font-weight:800;font-variant-numeric:tabular-nums}
+  .bars{display:flex;align-items:flex-end;gap:3cqw;height:26cqw;width:70cqw;justify-content:center;border-bottom:.8cqw solid var(--ink-30)}
+  .bars b{width:7cqw;background:var(--ink-30);border-radius:1.4cqw 1.4cqw 0 0}
+  .bars b.hi{background:var(--accent)}
+
+  /* ===== 9. 시스템 흐름 (세로) ===== */
+  .flow{display:flex;flex-direction:column;gap:.6cqh;margin-top:.6cqh}
+  .fcard{display:flex;align-items:center;gap:4.5cqw;background:var(--ink-07);border:.7cqw solid var(--ink);border-radius:3.5cqw;padding:2.4cqw 4.5cqw}
+  .fnum{width:9cqw;height:9cqw;flex:none;border-radius:50%;background:var(--accent);color:var(--ink);display:grid;place-items:center;font-weight:800;font-size:4.6cqw}
+  .ft{font-weight:800;font-size:5.4cqw}
+  .fd{font-size:3.9cqw;color:var(--ink-72);font-weight:600}
+  .farrow{align-self:center;color:var(--accent);font-size:4cqw;font-weight:900;line-height:.5}
+  .sync{margin-top:1.2cqh;border:.7cqw dashed var(--accent);border-radius:3cqw;padding:2.4cqw 4cqw;text-align:center;font-size:4cqw;font-weight:700;color:var(--ink)}
+  .sync b{color:var(--ink);background:var(--accent-18);padding:0 .3em;border-radius:.2em}
+
+  /* ===== 10. 필요한 구성요소 (세로 1열) ===== */
+  .bb{display:flex;flex-direction:column;gap:2cqw;margin-top:.6cqh}
+  .bbc{display:flex;align-items:center;gap:4.5cqw;background:var(--ink-07);border:.7cqw solid var(--ink);border-radius:3.5cqw;padding:2.6cqw 4.5cqw}
+  .bbic{width:12cqw;height:12cqw;flex:none;border-radius:2.6cqw;background:var(--bg);border:.7cqw solid var(--ink);display:grid;place-items:center}
+  .bbic .qr{width:74%}
+  .bbt{font-weight:800;font-size:5cqw}
+  .bbd{font-size:3.9cqw;color:var(--ink-72);font-weight:600;margin-top:.6cqw}
+  .g-list{display:flex;flex-direction:column;gap:1.6cqw;width:56%}
+  .g-list i{height:1.8cqw;background:var(--ink);border-radius:2cqw}
+  .g-phone{position:relative;width:6cqw;height:9.6cqw;border:.9cqw solid var(--ink);border-radius:2cqw}
+  .g-phone::after{content:"";position:absolute;bottom:1cqw;left:50%;transform:translateX(-50%);width:2.4cqw;height:.7cqw;background:var(--ink);border-radius:2cqw}
+  .g-bars{display:flex;align-items:flex-end;gap:1.4cqw;height:8.5cqw}
+  .g-bars i{width:2.6cqw;background:var(--accent);border-radius:.7cqw .7cqw 0 0}
+
+  /* ===== 13. 효과 (세로) ===== */
+  .stats{display:flex;flex-direction:column;gap:4.5cqh;margin-top:2cqh;align-items:center}
+  .stat{display:flex;flex-direction:column;align-items:center;gap:.6cqh;text-align:center}
+  .stat .big{font-size:17cqw;font-weight:800;letter-spacing:-.03em;line-height:1}
+  .stat .big .u{font-size:8cqw}
+  .stat .cap{font-size:4.6cqw;font-weight:700;color:var(--ink-72)}
+  .stat.amber .big{color:var(--accent)}
+
+  /* ===== 14. 도입 단계 (세로) ===== */
+  .steps{display:flex;flex-direction:column;gap:1cqh;margin-top:2cqh}
+  .step{display:flex;align-items:center;gap:4.5cqw}
+  .step .sn{width:14cqw;height:14cqw;flex:none;border-radius:50%;border:1cqw solid var(--ink);background:var(--bg);display:grid;place-items:center;font-weight:800;font-size:6.4cqw}
+  .step.cur .sn{background:var(--accent);border-color:var(--accent)}
+  .stt{font-weight:800;font-size:5.6cqw}
+  .std{font-size:4cqw;color:var(--ink-72);font-weight:600}
+  .sconn{margin-left:6cqw;color:var(--ink-30);font-size:5.5cqw;font-weight:900;line-height:.5}
+
+  /* ===== 15. 마무리 ===== */
+  .cta{margin-top:2cqh;background:var(--accent);color:var(--ink);font-weight:800;font-size:5.8cqw;padding:3cqw 6cqw;border-radius:3cqw}
+  .closing-qr{width:32cqw;margin-top:4cqh}
+
+  /* ===== HUD (진행 표시, 폰 폭에 정렬) ===== */
+  .hud{position:fixed;top:0;left:50%;transform:translateX(-50%);width:min(100vw,30rem);z-index:60;pointer-events:none}
+  .track{height:4px;background:var(--ink-12)}
+  .track span{display:block;height:100%;width:6.66%;background:var(--accent);transition:width .3s ease}
+  .count{position:absolute;top:calc(8px + env(safe-area-inset-top));right:14px;background:var(--ink);color:var(--bg);font-weight:800;font-size:12px;padding:3px 10px;border-radius:20px;font-variant-numeric:tabular-nums}
+  .hint{position:fixed;bottom:calc(2.4vh + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);z-index:60;background:var(--ink);color:var(--bg);font-weight:700;font-size:13px;padding:8px 16px;border-radius:20px;opacity:.92;transition:opacity .4s}
+  .hint.hide{opacity:0}
+
+  /* ===== 인쇄 ===== */
+  @media print{
+    @page{size:portrait;margin:0}
+    body{background:var(--bg);overflow:visible}
+    .deck{height:auto;width:100%;overflow:visible}
+    .hud,.hint{display:none}
+    .slide{height:auto;min-height:96vh;page-break-after:always}
+    *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  }
+</style>
+</head>
+<body>
+<div class="deck" id="deck">
+
+  <!-- 1. 표지 -->
+  <section class="slide">
+    <div class="stage center">
+      <span class="eyebrow">따요 처치 · TAYO CHURCH</span>
+      <h1 class="hero">스캔 한 번,<br><span class="hl">출석 끝.</span></h1>
+      <p class="subhead">QR 출석 시스템 도입 제안</p>
+      <div class="title-qr"><div class="qr" data-code="TAYO-0001"></div></div>
+    </div>
+  </section>
+
+  <!-- 2. 문제 -->
+  <section class="slide">
+    <div class="stage">
+      <span class="eyebrow">지금의 어려움</span>
+      <h2 class="headline">매주 반복돼요</h2>
+      <div class="biglist">
+        <div class="row"><span class="mk dot"></span>손으로 적는 출석부</div>
+        <div class="row"><span class="mk dot"></span>매번 다시 세는 숫자</div>
+        <div class="row"><span class="mk dot"></span>흩어지는 지난 기록</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3. 개요 -->
+  <section class="slide">
+    <div class="stage center">
+      <div class="big-qr"><div class="qr" data-code="ANSWER-QR"></div></div>
+      <h2 class="headline">답은 <span class="hl">QR</span></h2>
+      <p class="subhead">번호를 QR로 만들고<br>폰으로 스캔합니다</p>
+    </div>
+  </section>
+
+  <!-- 4. 등장인물 -->
+  <section class="slide">
+    <div class="stage">
+      <span class="eyebrow">등장인물</span>
+      <h2 class="headline">네 사람</h2>
+      <div class="roles">
+        <div class="role"><div class="av">관</div><div class="rn">관리자</div><div class="rd">번호를 발급</div></div>
+        <div class="role"><div class="av">성</div><div class="rn">성도</div><div class="rd">QR을 지님</div></div>
+        <div class="role"><div class="av">교</div><div class="rn">교사</div><div class="rd">스캔해 체크</div></div>
+        <div class="role"><div class="av">목</div><div class="rn">담임목사</div><div class="rd">결과를 확인</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5. 여정 ① -->
+  <section class="slide">
+    <div class="stage">
+      <span class="eyebrow">사용자 여정 · 1 / 4</span>
+      <h2 class="headline">① 번호 발급</h2>
+      <div class="art">
+        <div class="idcard">
+          <div class="cap">따요 처치 · 성도 등록</div>
+          <div class="bd">
+            <div><div class="lbl">성도 번호</div><div class="num">0142</div></div>
+            <div class="qr" data-code="MEMBER-0142"></div>
+          </div>
+        </div>
+      </div>
+      <p class="subhead">관리자가 성도마다 고유 번호를 부여해요</p>
+    </div>
+  </section>
+
+  <!-- 6. 여정 ② -->
+  <section class="slide">
+    <div class="stage">
+      <span class="eyebrow">사용자 여정 · 2 / 4</span>
+      <h2 class="headline">② 팔찌 배포</h2>
+      <div class="art">
+        <div class="band"><div class="strap"></div><div class="tag"><div class="qr" data-code="BAND-0142"></div></div></div>
+      </div>
+      <p class="subhead">번호를 QR로 인쇄해 팔찌·목걸이로 나눠줘요</p>
+      <p class="note">잃어버려도 같은 번호로 다시 인쇄</p>
+    </div>
+  </section>
+
+  <!-- 7. 여정 ③ -->
+  <section class="slide">
+    <div class="stage">
+      <span class="eyebrow">사용자 여정 · 3 / 4</span>
+      <h2 class="headline">③ 스캔 출석</h2>
+      <div class="art">
+        <div class="phone">
+          <div class="vf">
+            <div class="qr" data-code="SCAN-0142"></div>
+            <span class="bk tl"></span><span class="bk tr"></span><span class="bk bl"></span><span class="bk br"></span>
+            <span class="scan"></span>
+          </div>
+        </div>
+      </div>
+      <p class="subhead">교사가 스마트폰으로 QR을 찍으면 끝이에요</p>
+    </div>
+  </section>
+
+  <!-- 8. 여정 ④ -->
+  <section class="slide">
+    <div class="stage">
+      <span class="eyebrow">사용자 여정 · 4 / 4</span>
+      <h2 class="headline">④ 리포트</h2>
+      <div class="art">
+        <div class="dash">
+          <div class="donut"><span class="pct">78%</span></div>
+          <div class="bars"><b style="height:42%"></b><b style="height:58%"></b><b style="height:50%"></b><b style="height:70%"></b><b style="height:64%"></b><b class="hi" style="height:92%"></b></div>
+        </div>
+      </div>
+      <p class="subhead">모인 출석 데이터를 목사님이 한눈에 봐요</p>
+    </div>
+  </section>
+
+  <!-- 9. 시스템 흐름 -->
+  <section class="slide">
+    <div class="stage">
+      <span class="eyebrow">시스템 구성</span>
+      <h2 class="headline">하나로 이어져요</h2>
+      <div class="flow">
+        <div class="fcard"><div class="fnum">1</div><div><div class="ft">발급</div><div class="fd">번호·QR 생성</div></div></div>
+        <div class="farrow">↓</div>
+        <div class="fcard"><div class="fnum">2</div><div><div class="ft">배포</div><div class="fd">팔찌·목걸이</div></div></div>
+        <div class="farrow">↓</div>
+        <div class="fcard"><div class="fnum">3</div><div><div class="ft">스캔</div><div class="fd">교사 스마트폰</div></div></div>
+        <div class="farrow">↓</div>
+        <div class="fcard"><div class="fnum">4</div><div><div class="ft">리포트</div><div class="fd">목사님 확인</div></div></div>
+      </div>
+      <div class="sync">끊겨도 스캔 → <b>연결되면 자동 저장</b></div>
+    </div>
+  </section>
+
+  <!-- 10. 필요한 구성요소 -->
+  <section class="slide">
+    <div class="stage">
+      <span class="eyebrow">무엇을 준비하나</span>
+      <h2 class="headline">필요한 것 네 가지</h2>
+      <div class="bb">
+        <div class="bbc"><div class="bbic"><span class="g-list"><i></i><i></i><i></i></span></div><div><div class="bbt">성도 명부 · 번호 발급</div><div class="bbd">엑셀 같은 무료 표로</div></div></div>
+        <div class="bbc"><div class="bbic"><div class="qr" data-code="TAG"></div></div><div><div class="bbt">QR 팔찌·목걸이</div><div class="bbd">방수 · 이름 없이 번호만</div></div></div>
+        <div class="bbc"><div class="bbic"><span class="g-phone"></span></div><div><div class="bbt">스캔 화면</div><div class="bbd">설치 없이 링크로</div></div></div>
+        <div class="bbc"><div class="bbic"><span class="g-bars"><i style="height:45%"></i><i style="height:75%"></i><i style="height:100%"></i></span></div><div><div class="bbt">리포트 화면</div><div class="bbd">출석·결석 한눈에</div></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 11. 오프라인 -->
+  <section class="slide">
+    <div class="stage center">
+      <span class="eyebrow">필리핀 현장 맞춤</span>
+      <h2 class="headline">인터넷 없어도</h2>
+      <p class="subhead">끊겨도 스캔 <span class="hl">OK</span><br>연결되면 자동 저장</p>
+    </div>
+  </section>
+
+  <!-- 12. 비용 -->
+  <section class="slide">
+    <div class="stage">
+      <span class="eyebrow">필리핀 현장 맞춤</span>
+      <h2 class="headline">돈 거의 안 들어요</h2>
+      <div class="biglist">
+        <div class="row"><span class="mk tick">✓</span>앱 설치 필요 없음</div>
+        <div class="row"><span class="mk tick">✓</span>있는 폰으로 충분</div>
+        <div class="row"><span class="mk tick">✓</span>팔찌만 한 번, 저렴</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 13. 효과 -->
+  <section class="slide">
+    <div class="stage">
+      <span class="eyebrow">무엇이 달라지나</span>
+      <h2 class="headline">이렇게 좋아져요</h2>
+      <div class="stats">
+        <div class="stat amber"><div class="big">5<span class="u">초</span></div><div class="cap">한 명 출석 체크</div></div>
+        <div class="stat"><div class="big">자동</div><div class="cap">결석자 명단</div></div>
+        <div class="stat"><div class="big">목양</div><div class="cap">숫자 아닌 사람에 집중</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 14. 도입 단계 -->
+  <section class="slide">
+    <div class="stage">
+      <span class="eyebrow">이렇게 시작해요</span>
+      <h2 class="headline">작게 시작, 크게 성장</h2>
+      <div class="steps">
+        <div class="step cur"><div class="sn">1</div><div><div class="stt">한 반 시범</div><div class="std">4주간 한 부서에서 먼저</div></div></div>
+        <div class="sconn">↓</div>
+        <div class="step"><div class="sn">2</div><div><div class="stt">전체 확대</div><div class="std">잘 되면 모든 부서로</div></div></div>
+        <div class="sconn">↓</div>
+        <div class="step"><div class="sn">3</div><div><div class="stt">리포트 정착</div><div class="std">매주 출석 리포트 확인</div></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 15. 마무리 -->
+  <section class="slide">
+    <div class="stage center">
+      <span class="eyebrow">함께 시작해요</span>
+      <h2 class="headline">다음 주,<br><span class="hl">한 반부터</span></h2>
+      <div class="cta">함께 시작하시겠어요?</div>
+      <div class="closing-qr"><div class="qr" data-code="TAYO-START"></div></div>
+    </div>
+  </section>
+
+</div>
+
+<!-- 진행 표시 -->
+<div class="hud">
+  <div class="track"><span id="prog"></span></div>
+  <div class="count"><span id="cur">1</span> / <span id="total">15</span></div>
+</div>
+<div class="hint" id="hint">아래로 넘기기 ↓</div>
+
+<script>
+  /* ===== QR 도형 생성 ===== */
+  function buildQR(el){
+    var n = 15;
+    var code = el.dataset.code || "TAYO";
+    var h = 2166136261;
+    for(var k=0;k<code.length;k++){ h ^= code.charCodeAt(k); h = Math.imul(h,16777619); }
+    function rand(){ h += 0x6D2B79F5; var t=h; t=Math.imul(t^(t>>>15),t|1); t^=t+Math.imul(t^(t>>>7),t|61); return ((t^(t>>>14))>>>0)/4294967296; }
+    function inFinder(r,c){
+      var f=5;
+      var tl = r<f && c<f, tr = r<f && c>=n-f, bl = r>=n-f && c<f;
+      if(!(tl||tr||bl)) return null;
+      var lr = tl?r:(tr?r:r-(n-f));
+      var lc = tl?c:(tr?c-(n-f):c);
+      return (lr===0||lr===4||lc===0||lc===4)||(lr===2&&lc===2);
+    }
+    el.style.setProperty("--n", n);
+    var frag = document.createDocumentFragment();
+    for(var r=0;r<n;r++) for(var c=0;c<n;c++){
+      var cell = document.createElement("i");
+      var f = inFinder(r,c);
+      if((f===null) ? (rand()>0.48) : f) cell.className = "on";
+      frag.appendChild(cell);
+    }
+    el.appendChild(frag);
+  }
+  document.querySelectorAll(".qr").forEach(buildQR);
+
+  /* ===== 세로 스크롤-스냅 넘김 ===== */
+  var deck = document.getElementById("deck");
+  var slides = Array.prototype.slice.call(deck.querySelectorAll(".slide"));
+  var cur = 0, total = slides.length;
+  var prog = document.getElementById("prog");
+  var curEl = document.getElementById("cur");
+  var hint = document.getElementById("hint");
+  var reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  document.getElementById("total").textContent = total;
+
+  function update(){ prog.style.width = ((cur+1)/total*100)+"%"; curEl.textContent = cur+1; }
+  function goTo(n){
+    cur = Math.max(0, Math.min(total-1, n));
+    slides[cur].scrollIntoView({behavior: reduce?"auto":"smooth", block:"start"});
+    update();
+  }
+  function dismissHint(){ if(hint) hint.classList.add("hide"); }
+
+  // 현재 슬라이드 추적 (스와이프/스크롤 대응)
+  var io = new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if(e.isIntersecting && e.intersectionRatio >= 0.55){
+        cur = slides.indexOf(e.target); update();
+      }
+    });
+  }, {root: deck, threshold:[0.55]});
+  slides.forEach(function(s){ io.observe(s); });
+
+  document.addEventListener("keydown", function(e){
+    if(["ArrowDown","ArrowRight","PageDown"," ","Spacebar"].indexOf(e.key)>-1){ goTo(cur+1); dismissHint(); e.preventDefault(); }
+    else if(["ArrowUp","ArrowLeft","PageUp"].indexOf(e.key)>-1){ goTo(cur-1); dismissHint(); e.preventDefault(); }
+    else if(e.key==="Home"){ goTo(0); } else if(e.key==="End"){ goTo(total-1); }
+  });
+  deck.addEventListener("click", function(){ goTo(cur+1); dismissHint(); });
+  deck.addEventListener("scroll", function(){ dismissHint(); }, {passive:true, once:true});
+
+  update();
+</script>
+</body>
+</html>
